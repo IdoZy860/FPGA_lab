@@ -23,7 +23,7 @@
 module Lim_Inc(a, ci, sum, co);
     
     parameter L = 10;
-    localparam N = $clog2(L) + 1;  // +1 to handle inputs up to 15 for L=7
+    localparam N = $clog2(L+1);  // +1 to handle inputs up to 15 for L=7
     
     input [N-1:0] a;
     input ci;
