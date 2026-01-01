@@ -1,4 +1,4 @@
-`timescale 1 ns / 1 ns
+`timescale 1ns/1ns
 //////////////////////////////////////////////////////////////////////////////////
 // Company:         Tel Aviv University
 // Engineer:        
@@ -18,7 +18,6 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
-`timescale 1 ns / 1 ns
 
 module Counter_tb();
 
@@ -26,15 +25,13 @@ module Counter_tb();
     wire [7:0] time_reading;
     wire [3:0] tens_seconds_wire;
     wire [3:0] ones_seconds_wire;
-    integer ts, os, sync;
     
-    // Variables for expected values
     integer expected_tens, expected_ones;
-    integer count_sample, show_sample;
+    integer seconds_count;
     
     // Instantiate the UUT (Unit Under Test)
-    // Use a small CLK_FREQ for testing (e.g., 10 Hz instead of 100 MHz)
-    Counter #(10) uut (
+    // Using CLK_FREQ = 10 for faster simulation (1Hz = 10 clock cycles)
+    Counter #(.CLK_FREQ(10)) uut (
         .clk(clk),
         .init_regs(init_regs),
         .count_enabled(count_enabled),
@@ -45,54 +42,64 @@ module Counter_tb();
     assign ones_seconds_wire = time_reading[3:0];
     
     initial begin 
-        #1;
-        sync = 0;
-        count_sample = 0;
-        show_sample = 0;
         correct = 1;
         loop_was_skipped = 1;
-        clk = 1;
+        
+        // Initialize
+        clk = 0;
         init_regs = 1;
         count_enabled = 0;
-        #20;
+        
+        // Check initial value (should be 00)
+        #15;
+        if (tens_seconds_wire !== 0 || ones_seconds_wire !== 0) begin
+            correct = 0;
+            $display("ERROR: Initial value should be 00, got %0d%0d", 
+                     tens_seconds_wire, ones_seconds_wire);
+        end
+        
+        // Reset pulse and enable counting
+        #5;
         init_regs = 0;
         count_enabled = 1;
         
-        // With CLK_FREQ=10, 1 second = 10 clock cycles = 100ns (since clock period is 10ns)
-        for (ts = 0; ts < 1; ts = ts + 1) begin
-            for (os = 0; os < 2; os = os + 1) begin
-                // Wait for approximately 1 second (100ns for CLK_FREQ=10)
-                #(100 + sync);
-                
-                // After waiting 1 second, check the counter value
-                // The expected time should be (os+1) seconds
-                expected_tens = (os + 1) / 10;
-                expected_ones = (os + 1) % 10;
-                
-                // Verify the counter value
-                if (tens_seconds_wire !== expected_tens || ones_seconds_wire !== expected_ones) begin
-                    correct = 0;
-                    $display("Error: At time %0d ns, expected %0d%d, got %0d%d", 
-                             $time, expected_tens, expected_ones, 
-                             tens_seconds_wire, ones_seconds_wire);
-                end else begin
-                    $display("OK: At time %0d ns, counter shows %0d%d", 
-                             $time, tens_seconds_wire, ones_seconds_wire);
-                end
-                
-                sync = sync | 1;
-                loop_was_skipped = 0;
+        // Test for 120 seconds (2 minutes) to verify rollover
+        // Start with seconds_count = 1 because after 1 second we expect 01
+        for (seconds_count = 1; seconds_count <= 120; seconds_count = seconds_count + 1) begin
+            // Wait for 1 second (10 clock cycles = 100ns)
+            #100;
+            
+            loop_was_skipped = 0;
+            
+            // Calculate expected values (seconds 0-59, then rollover)
+            // seconds_count represents the number of seconds passed since enable
+            expected_tens = (seconds_count % 60) / 10;
+            expected_ones = (seconds_count % 60) % 10;
+            
+            // Display current counter value
+            $display("Time: %0d ns, Counter: %0d%0d, Expected: %0d%0d", 
+                     $time, tens_seconds_wire, ones_seconds_wire,
+                     expected_tens, expected_ones);
+            
+            // Verify the counter value
+            if (tens_seconds_wire !== expected_tens || ones_seconds_wire !== expected_ones) begin
+                correct = 0;
+                $display("ERROR: At time %0d ns, expected %0d%0d, got %0d%0d", 
+                         $time, expected_tens, expected_ones, 
+                         tens_seconds_wire, ones_seconds_wire);
             end
         end
         
+        // Test complete
         #5;
         if (correct && ~loop_was_skipped)
-            $display("Test Passed - %m");
+            $display("\nTest Passed - %m");
         else
-            $display("Test Failed - %m");
+            $display("\nTest Failed - %m");
         $finish;
     end
     
-    always #5 clk = ~clk;  // 10ns period = 100MHz clock
+    // Generate 100MHz clock (10ns period)
+    always #5 clk = ~clk;
     
 endmodule
