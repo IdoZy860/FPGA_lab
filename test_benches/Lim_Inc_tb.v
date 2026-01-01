@@ -17,75 +17,61 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-`timescale 1ns/10ps
-
 module Lim_Inc_tb();
 
-    // Testbench signals
-    reg [3:0] a;
-    reg ci;
-    reg correct;
-    reg loop_was_skipped;
+    reg [3:0] a; 
+    reg ci, correct, loop_was_skipped;
     wire [3:0] sum;
     wire co;
     
-    integer ai, cii;
+    integer ai,cii;
     
-    // Instantiate the Unit Under Test (UUT)
-    Lim_Inc #(7) uut (
+    // Instantiate the UUT (Unit Under Test)
+    Lim_Inc #(.L(11)) uut (
         .a(a),
         .ci(ci),
         .sum(sum),
         .co(co)
     );
     
-    // Initialize signals
     initial begin
         correct = 1;
         loop_was_skipped = 1;
-        a = 0;
-        ci = 0;
+        #1
         
-        #10;  // Initial delay
-        
-        // Test all combinations of a=0..15 and ci=0..1
-        for (ai = 0; ai < 16; ai = ai + 1) begin
+        // Test all combinations of a (0-15) and ci (0-1)
+        for (ai = 0; ai <= 15; ai = ai + 1) begin
             for (cii = 0; cii <= 1; cii = cii + 1) begin
                 a = ai;
                 ci = cii;
                 loop_was_skipped = 0;
                 
-                #10;  // Wait for output to stabilize
+                #10; // Wait for propagation
                 
-                // Check if output is correct
-                if (a + ci > 7) begin
-                    // Should saturate to 0 with co=1
-                    if (sum !== 0 || co !== 1) begin
+                // Calculate expected result (a + ci > 11)
+                if (a + ci > 11) begin
+                    // Should saturate: sum=0, co=1
+                    if (sum !== 4'b0 || co !== 1'b1) begin
+                        $display("Error: a=%0d, ci=%0d -> sum=%b, co=%b, expected sum=0000, co=1", a, ci, sum, co);
                         correct = 0;
-                        $display("FAIL: a=%0d, ci=%0d: expected sum=0, co=1, got sum=%0d, co=%0d", 
-                                 a, ci, sum, co);
                     end
-                end else begin
-                    // Normal operation
-                    if (sum !== (a + ci) || co !== 0) begin
+                end
+                else begin
+                    // Normal increment: sum=a+ci, co=0
+                    if (sum !== (a + ci) || co !== 1'b0) begin
+                        $display("Error: a=%0d, ci=%0d -> sum=%b (decimal %0d), co=%b, expected sum=%0d, co=0", 
+                                 a, ci, sum, sum, co, a + ci);
                         correct = 0;
-                        $display("FAIL: a=%0d, ci=%0d: expected sum=%0d, co=0, got sum=%0d, co=%0d", 
-                                 a, ci, a + ci, sum, co);
                     end
                 end
             end
         end
         
-        #10;
-        
-        // Display test result
-        if (correct && ~loop_was_skipped) begin
+        #5
+        if (correct && ~loop_was_skipped)
             $display("Test Passed - %m");
-        end else begin
+        else
             $display("Test Failed - %m");
-        end
-        
         $finish;
     end
-    
 endmodule
