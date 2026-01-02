@@ -1,5 +1,5 @@
 # Verilog build outputs
-sim/
+sim
 *.vcd
 *.vvp
 *.out
@@ -17,5 +17,3 @@ sim/
 !.vscode/launch.json
 !.vscode/settings.json
 
-# Folder no to read
-Sim_tb/
