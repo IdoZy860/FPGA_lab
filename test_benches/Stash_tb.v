@@ -24,6 +24,7 @@ module Stash_tb();
     integer ini;
     
     // Instantiate the UUT (Unit Under Test)
+    // FILL HERE
     Stash #(.DEPTH(5)) uut (
         .clk(clk),
         .reset(reset),
@@ -34,94 +35,147 @@ module Stash_tb();
     );
     
     initial begin
+        $dumpfile("Stash_tb.vcd");
+        $dumpvars(0, Stash_tb);
+        $display("=== Starting Stash Test (DEPTH=5) ===");
+        
         correct = 1;
         clk = 0; 
         reset = 1; 
         loop_was_skipped = 1;
+        
+        // FILL HERE
         sample_in = 8'h00;
         sample_in_valid = 0;
         next_sample = 0;
         
-        // Apply and release reset
         #6
         reset = 0;
         
-        $display("=== Testing Stash Module (DEPTH=5) ===");
+        $display("Time %0t: Reset released, starting test sequence...", $time);
         
-        // Test 1: Fill the buffer completely
-        $display("\nTest 1: Filling buffer with 5 samples");
-        for(ini = 1; ini <= 5; ini = ini + 1) begin
-            sample_in = ini;
-            sample_in_valid = 1;
+        // Test 7 iterations as specified in template
+        for( ini=0; ini<7; ini=ini+1 ) begin
+            // FILL HERE - Generate test stimulus
+            case (ini)
+                0: begin
+                    sample_in = 8'd10;
+                    sample_in_valid = 1;
+                    next_sample = 0;
+                    $display("  Storing sample 10...");
+                end
+                1: begin
+                    sample_in = 8'd20;
+                    sample_in_valid = 1;
+                    next_sample = 0;
+                    $display("  Storing sample 20...");
+                end
+                2: begin
+                    sample_in = 8'd30;
+                    sample_in_valid = 1;
+                    next_sample = 0;
+                    $display("  Storing sample 30...");
+                end
+                3: begin
+                    sample_in = 8'd40;
+                    sample_in_valid = 1;
+                    next_sample = 0;
+                    $display("  Storing sample 40...");
+                end
+                4: begin
+                    sample_in = 8'd50;
+                    sample_in_valid = 1;
+                    next_sample = 0;
+                    $display("  Storing sample 50 (buffer full)...");
+                end
+                5: begin
+                    sample_in = 8'd60;
+                    sample_in_valid = 1;
+                    next_sample = 0;
+                    $display("  Storing sample 60 (overwrites oldest)...");
+                end
+                6: begin
+                    sample_in = 8'd0;
+                    sample_in_valid = 0;
+                    next_sample = 1;
+                    $display("  Pressing next_sample to navigate...");
+                end
+            endcase
+            
             #10; // Wait for clock edge
             
-            $display("  Time %0d ns: Stored sample %0d, sample_out = %0d", 
-                     $time, ini, sample_out);
-            sample_in_valid = 0;
+            // FILL HERE - Verify output
+            case (ini)
+                0: begin
+                    if (sample_out !== 8'd10) begin
+                        $display("  ERROR: Expected 10, got %0d", sample_out);
+                        correct = 0;
+                    end else begin
+                        $display("  OK: sample_out = %0d", sample_out);
+                    end
+                end
+                1: begin
+                    if (sample_out !== 8'd20) begin
+                        $display("  ERROR: Expected 20, got %0d", sample_out);
+                        correct = 0;
+                    end else begin
+                        $display("  OK: sample_out = %0d", sample_out);
+                    end
+                end
+                2: begin
+                    if (sample_out !== 8'd30) begin
+                        $display("  ERROR: Expected 30, got %0d", sample_out);
+                        correct = 0;
+                    end else begin
+                        $display("  OK: sample_out = %0d", sample_out);
+                    end
+                end
+                3: begin
+                    if (sample_out !== 8'd40) begin
+                        $display("  ERROR: Expected 40, got %0d", sample_out);
+                        correct = 0;
+                    end else begin
+                        $display("  OK: sample_out = %0d", sample_out);
+                    end
+                end
+                4: begin
+                    if (sample_out !== 8'd50) begin
+                        $display("  ERROR: Expected 50, got %0d", sample_out);
+                        correct = 0;
+                    end else begin
+                        $display("  OK: sample_out = %0d", sample_out);
+                    end
+                end
+                5: begin
+                    // After storing 60, buffer should be: [60,20,30,40,50]
+                    // Read pointer should jump to 60
+                    if (sample_out !== 8'd60) begin
+                        $display("  ERROR: Expected 60, got %0d", sample_out);
+                        correct = 0;
+                    end else begin
+                        $display("  OK: sample_out = %0d (buffer: [60,20,30,40,50])", sample_out);
+                    end
+                end
+                6: begin
+                    // After next_sample, should show 20 (next in buffer)
+                    if (sample_out !== 8'd20) begin
+                        $display("  ERROR: Expected 20 after next_sample, got %0d", sample_out);
+                        correct = 0;
+                    end else begin
+                        $display("  OK: sample_out = %0d (next_sample working)", sample_out);
+                    end
+                end
+            endcase
+            
             loop_was_skipped = 0;
         end
         
-        // Buffer should now be: [1, 2, 3, 4, 5]
-        // Read pointer should be at sample 5 (last stored)
-        
-        // Test 2: Store 6th sample (overwrites sample 1)
-        $display("\nTest 2: Storing 6th sample (overwrites oldest)");
-        sample_in = 6;
-        sample_in_valid = 1;
-        #10;
-        $display("  Time %0d ns: Stored sample 6, sample_out = %0d", 
-                 $time, sample_out);
-        sample_in_valid = 0;
-        
-        // Buffer should now be: [6, 2, 3, 4, 5]
-        // Read pointer should be at sample 6 (index 0)
-        
-        // Test 3: Navigate through the buffer
-        $display("\nTest 3: Navigating through buffer with next_sample");
-        
-        // First next_sample should show sample 2 (index 1)
-        #10;
-        next_sample = 1;
-        #10;
-        $display("  Time %0d ns: After first next_sample, sample_out = %0d", 
-                 $time, sample_out);
-        next_sample = 0;
-        
-        // Let's just check that we can navigate through all samples
-        // We'll press next_sample 4 more times to cycle through remaining samples
-        for(ini = 0; ini < 4; ini = ini + 1) begin
-            #10;
-            next_sample = 1;
-            #10;
-            $display("  Time %0d ns: After next_sample, sample_out = %0d", 
-                     $time, sample_out);
-            next_sample = 0;
-        end
-        
-        // We should have seen: 2, 3, 4, 5, and then back to 6 (wrap-around)
-        // The actual values will tell us what's happening
-        
-        // Test 4: Reset and verify
-        $display("\nTest 4: Testing reset");
-        reset = 1;
-        #10;
-        reset = 0;
-        #10;
-        
-        if (sample_out !== 8'h00) begin
-            correct = 0;
-            $display("  ERROR: After reset, expected 0, got %0d", sample_out);
-        end else begin
-            $display("  OK: Reset successful, sample_out = 0");
-        end
-        
-        // Final result
         #5
-        if (correct && ~loop_was_skipped) begin
-            $display("\n=== Test Passed - %m ===");
-        end else begin
-            $display("\n=== Test Failed - %m ===");
-        end
+        $display("\n=== Test Summary ===");
+        if (correct && ~loop_was_skipped)
+            $display("Test Passed - %m");
+        else
+            $display("Test Failed - %m");
         $finish;
     end
     
