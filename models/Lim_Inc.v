@@ -12,7 +12,7 @@
 // Description:     Incrementor modulo L, where the input a is *saturated* at L 
 //                  If a+ci>L, then the output will be s=0,co=1 anyway.
 // 
-// Dependencies:    Compadder
+// Dependencies:    CSA
 // 
 // Revision:        3.0
 // Additional Comments:
@@ -21,8 +21,8 @@
 
 module Lim_Inc(a, ci, sum, co);
     
-    parameter L = 10;
-    localparam N = $clog2(L+1);  // +1 to handle inputs up to 15 for L=7
+    parameter L = 7; // Limit value
+    localparam N = $clog2(L);  // N = ceil(log2(L))
     
     input [N-1:0] a;
     input ci;
@@ -32,19 +32,32 @@ module Lim_Inc(a, ci, sum, co);
     wire [N-1:0] sum_temp;
     wire co_temp;
     
+    // Convert ci to N-bit vector for CSA
+    wire [N-1:0] b_const = {N{1'b0}};
+    
     // Use CSA to add a and ci
-    CSA #(N) csa_inst (
+    CSA #(.N(N)) csa_inst (
         .a(a),
-        .b({(N){1'b0}}),
+        .b(b_const),  // b is 0
         .ci(ci),
         .sum(sum_temp),
         .co(co_temp)
     );
     
-    // Check if result exceeds L
-    wire exceeds_limit = (sum_temp > L) || co_temp;
+    // Check if result >= L
+    // We need to handle both cases: co_temp=1 OR sum_temp >= L
+    wire result_ge_L;
     
-    assign sum = exceeds_limit ? {N{1'b0}} : sum_temp;
-    assign co = exceeds_limit;
+    // Create an (N+1)-bit value by concatenating co_temp and sum_temp
+    // This represents the full result of a + ci
+    wire [N:0] full_result = {co_temp, sum_temp};
+    
+    // Compare with L
+    // If full_result >= L, then result_ge_L = 1
+    assign result_ge_L = (full_result >= L);
+    
+    // Output logic
+    assign sum = result_ge_L ? {N{1'b0}} : sum_temp;
+    assign co = result_ge_L;
     
 endmodule
