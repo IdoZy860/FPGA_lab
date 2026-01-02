@@ -1,1 +1,21 @@
+# Verilog build outputs
+sim/
 *.vcd
+*.vvp
+*.out
+*.log
+
+# GTKWave session files
+*.gtkw
+
+# macOS junk
+.DS_Store
+
+# VS Code (optional)
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/settings.json
+
+# Folder no to read
+Sim_tb/
