@@ -28,14 +28,14 @@ module Counter(clk, init_regs, count_enabled, time_reading);
 
    reg [$clog2(CLK_FREQ)-1:0] clk_cnt;
    
-   // ============ ADD THIS CODE HERE ============
-   // Calculate widths based on Lim_Inc parameters
-   localparam ONES_WIDTH = $clog2(9+1); // 4 bits for 0-9
-   localparam TENS_WIDTH = $clog2(5+1); // 3 bits for 0-5
+   // Calculate widths based on BCD counters (0-9 for ones, 0-5 for tens)
+   // For L=10, $clog2(10) = 4 bits (0-9 requires values up to 9, which is 1001)
+   // For L=6, $clog2(6) = 3 bits (0-5 requires values up to 5, which is 101)
+   localparam ONES_WIDTH = 4;  // 4 bits for 0-9 (BCD ones)
+   localparam TENS_WIDTH = 3;  // 3 bits for 0-5 (BCD tens)
    
    reg [ONES_WIDTH-1:0] ones_seconds;    // [3:0] - 4 bits  
    reg [TENS_WIDTH-1:0] tens_seconds;    // [2:0] - 3 bits
-   // ============================================
    
    // Wires for Lim_Inc outputs
    wire [ONES_WIDTH-1:0] ones_next;
@@ -46,17 +46,17 @@ module Counter(clk, init_regs, count_enabled, time_reading);
    // Wire for one-second enable signal
    wire one_second_enable;
    
-   // FILL HERE THE LIMITED-COUNTER INSTANCES
-   // Ones seconds counter (0-9)
-   Lim_Inc #(9) ones_inc (
+   // ============ FIXED: Correct L values for BCD ============
+   // Ones seconds counter (0-9) - needs L=10 (counts 0-9, then rolls over)
+   Lim_Inc #(.L(10)) ones_inc (
        .a(ones_seconds),
        .ci(one_second_enable && count_enabled),
        .sum(ones_next),
        .co(ones_co)
    );
    
-   // Tens seconds counter (0-5)
-   Lim_Inc #(5) tens_inc (
+   // Tens seconds counter (0-5) - needs L=6 (counts 0-5, then rolls over)
+   Lim_Inc #(.L(6)) tens_inc (
        .a(tens_seconds),
        .ci(one_second_enable && count_enabled && ones_co),
        .sum(tens_next),
@@ -66,39 +66,34 @@ module Counter(clk, init_regs, count_enabled, time_reading);
    // One-second enable: when clk_cnt reaches CLK_FREQ-1
    assign one_second_enable = (clk_cnt == CLK_FREQ - 1);
    
-   // ============ UPDATE THIS LINE ============
-   // Output time reading: zero-extend to 4 bits each
+   // Output time reading: concatenate with proper zero-extension
+   // tens_seconds is 3 bits, needs to be zero-extended to 4 bits
    assign time_reading = {
-       {4-TENS_WIDTH{1'b0}}, tens_seconds,  // Zero-extend 3 bits to 4 bits
-       ones_seconds                         // Already 4 bits
+       {1'b0, tens_seconds},  // Zero-extend 3-bit tens to 4 bits
+       ones_seconds            // 4-bit ones
    };
-   // ==========================================
    
    //------------- Synchronous ----------------
    always @(posedge clk)
      begin
-        // FILL HERE THE ADVANCING OF THE REGISTERS AS A FUNCTION OF init_regs, count_enabled
+        // Reset logic
         if (init_regs) begin
-            // Reset all counters
             clk_cnt <= 0;
             ones_seconds <= 0;
             tens_seconds <= 0;
         end else begin
             // Clock counter logic
             if (count_enabled) begin
-                if (clk_cnt == CLK_FREQ - 1) begin
+                if (one_second_enable) begin
                     clk_cnt <= 0; // Reset at 1 second
                 end else begin
                     clk_cnt <= clk_cnt + 1; // Increment clock counter
                 end
             end
             
-            // Seconds counters logic
+            // Seconds counters logic - update only when one_second_enable is active
             if (one_second_enable && count_enabled) begin
-                // Update ones seconds with the output from Lim_Inc
                 ones_seconds <= ones_next;
-                
-                // Update tens seconds with the output from Lim_Inc
                 tens_seconds <= tens_next;
             end
         end

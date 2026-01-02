@@ -42,6 +42,8 @@ module Counter_tb();
     assign ones_seconds_wire = time_reading[3:0];
     
     initial begin 
+        $dumpfile("Counter_tb.vcd");
+        $dumpvars(0, Counter_tb);
         correct = 1;
         loop_was_skipped = 1;
         
