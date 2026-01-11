@@ -28,14 +28,13 @@ module Counter(clk, init_regs, count_enabled, time_reading);
 
    reg [$clog2(CLK_FREQ)-1:0] clk_cnt;
    
-   // Calculate widths based on BCD counters (0-9 for ones, 0-5 for tens)
-   // For L=10, $clog2(10) = 4 bits (0-9 requires values up to 9, which is 1001)
-   // For L=6, $clog2(6) = 3 bits (0-5 requires values up to 5, which is 101)
+   // Calculate widths based on BCD counters (0-9 for both ones and tens)
+   // For 0-9, $clog2(10) = 4 bits (0-9 requires values up to 9, which is 1001)
    localparam ONES_WIDTH = 4;  // 4 bits for 0-9 (BCD ones)
-   localparam TENS_WIDTH = 3;  // 3 bits for 0-5 (BCD tens)
+   localparam TENS_WIDTH = 4;  // 4 bits for 0-9 (BCD tens) - CHANGED from 3 to 4
    
    reg [ONES_WIDTH-1:0] ones_seconds;    // [3:0] - 4 bits  
-   reg [TENS_WIDTH-1:0] tens_seconds;    // [2:0] - 3 bits
+   reg [TENS_WIDTH-1:0] tens_seconds;    // [3:0] - 4 bits (was [2:0] for 0-5)
    
    // Wires for Lim_Inc outputs
    wire [ONES_WIDTH-1:0] ones_next;
@@ -46,7 +45,7 @@ module Counter(clk, init_regs, count_enabled, time_reading);
    // Wire for one-second enable signal
    wire one_second_enable;
    
-   // ============ FIXED: Correct L values for BCD ============
+   // ============ FIXED: Both counters count 0-9 for 100-second range ============
    // Ones seconds counter (0-9) - needs L=10 (counts 0-9, then rolls over)
    Lim_Inc #(.L(10)) ones_inc (
        .a(ones_seconds),
@@ -55,8 +54,8 @@ module Counter(clk, init_regs, count_enabled, time_reading);
        .co(ones_co)
    );
    
-   // Tens seconds counter (0-5) - needs L=6 (counts 0-5, then rolls over)
-   Lim_Inc #(.L(6)) tens_inc (
+   // Tens seconds counter (0-9) - needs L=10 (counts 0-9, then rolls over) - CHANGED from 6 to 10
+   Lim_Inc #(.L(10)) tens_inc (
        .a(tens_seconds),
        .ci(one_second_enable && count_enabled && ones_co),
        .sum(tens_next),
@@ -67,10 +66,10 @@ module Counter(clk, init_regs, count_enabled, time_reading);
    assign one_second_enable = (clk_cnt == CLK_FREQ - 1);
    
    // Output time reading: concatenate with proper zero-extension
-   // tens_seconds is 3 bits, needs to be zero-extended to 4 bits
+   // Both tens_seconds and ones_seconds are 4 bits, so just concatenate
    assign time_reading = {
-       {1'b0, tens_seconds},  // Zero-extend 3-bit tens to 4 bits
-       ones_seconds            // 4-bit ones
+       tens_seconds,  // 4-bit tens (0-9)
+       ones_seconds   // 4-bit ones (0-9)
    };
    
    //------------- Synchronous ----------------

@@ -65,18 +65,19 @@ module Counter_tb();
         init_regs = 0;
         count_enabled = 1;
         
-        // Test for 120 seconds (2 minutes) to verify rollover
+        // Test for 200 seconds to verify rollover at 100 seconds
         // Start with seconds_count = 1 because after 1 second we expect 01
-        for (seconds_count = 1; seconds_count <= 120; seconds_count = seconds_count + 1) begin
+        for (seconds_count = 1; seconds_count <= 200; seconds_count = seconds_count + 1) begin
             // Wait for 1 second (10 clock cycles = 100ns)
             #100;
             
             loop_was_skipped = 0;
             
-            // Calculate expected values (seconds 0-59, then rollover)
+            // Calculate expected values (seconds 0-99, then rollover)
             // seconds_count represents the number of seconds passed since enable
-            expected_tens = (seconds_count % 60) / 10;
-            expected_ones = (seconds_count % 60) % 10;
+            // CHANGED: modulo 100 instead of modulo 60
+            expected_tens = ((seconds_count % 100) / 10);
+            expected_ones = (seconds_count % 100) % 10;
             
             // Display current counter value
             $display("Time: %0d ns, Counter: %0d%0d, Expected: %0d%0d", 
